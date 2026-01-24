@@ -1,6 +1,6 @@
 resource "aws_db_subnet_group" "default" {
   name       = lower("${var.project_name}-db-subnet-group")
-  subnet_ids = aws_subnet.private_db[*].id
+  subnet_ids = var.private_db_subnet_ids
 
   tags = {
     Name = "${var.project_name}-db-subnet-group"
@@ -20,8 +20,8 @@ resource "aws_db_instance" "default" {
   
   multi_az               = true
   db_subnet_group_name   = aws_db_subnet_group.default.name
-  vpc_security_group_ids = [aws_security_group.db.id]
-  skip_final_snapshot    = true # For demo/dev purposes, set to false for prod
+  vpc_security_group_ids = [var.db_sg_id]
+  skip_final_snapshot    = true # For demo/dev purposes
 
   tags = {
     Name = "${var.project_name}-rds"

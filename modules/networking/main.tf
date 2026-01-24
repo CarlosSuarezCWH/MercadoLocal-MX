@@ -62,7 +62,7 @@ resource "aws_subnet" "private_db" {
   }
 }
 
-# NAT Gateway (One in the first public subnet for cost saving, referencing the prompt "un NAT Gateway")
+# NAT Gateway
 resource "aws_eip" "nat" {
   domain = "vpc"
 
@@ -82,7 +82,7 @@ resource "aws_nat_gateway" "main" {
   depends_on = [aws_internet_gateway.main]
 }
 
-# Route Table for Public Subnets
+# Route Tables
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
 
@@ -102,7 +102,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Route Table for Private Subnets
 resource "aws_route_table" "private" {
   vpc_id = aws_vpc.main.id
 
@@ -129,8 +128,6 @@ resource "aws_route_table_association" "private_db" {
 }
 
 # Security Groups
-
-# ALB Security Group
 resource "aws_security_group" "alb" {
   name        = "${var.project_name}-alb-sg"
   description = "Allow HTTP/HTTPS inbound traffic"
@@ -156,7 +153,6 @@ resource "aws_security_group" "alb" {
   }
 }
 
-# App Security Group
 resource "aws_security_group" "app" {
   name        = "${var.project_name}-app-sg"
   description = "Allow traffic from ALB"
@@ -170,9 +166,6 @@ resource "aws_security_group" "app" {
     security_groups = [aws_security_group.alb.id]
   }
 
-  # No SSH from Internet, allowing SSM or internal if needed. 
-  # Prompt says "Sin acceso SSH publico".
-
   egress {
     from_port   = 0
     to_port     = 0
@@ -185,7 +178,6 @@ resource "aws_security_group" "app" {
   }
 }
 
-# DB Security Group
 resource "aws_security_group" "db" {
   name        = "${var.project_name}-db-sg"
   description = "Allow MySQL from App"
