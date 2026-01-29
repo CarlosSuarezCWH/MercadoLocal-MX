@@ -7,7 +7,7 @@ variable "project_name" {
 }
 
 variable "environment" {
-  default = "dev"
+  default = "prod"
 }
 
 variable "vpc_cidr" {
@@ -31,12 +31,7 @@ variable "availability_zones" {
 }
 
 variable "instance_type" {
-  default = "t3.micro" # Free Tier
-}
-
-variable "nat_gateway_count" {
-  description = "Number of NAT Gateways (1 for cost savings)"
-  default     = 1
+  default = "t3.medium"
 }
 
 variable "db_name" {
@@ -47,12 +42,6 @@ variable "db_username" {
   default = "admin"
 }
 
-variable "domain_name" {
-  description = "Domain name for the application (e.g., example.com)"
-  type        = string
-}
-
-variable "route53_zone_id" {
-  description = "Route53 Zone ID for DNS validation"
-  type        = string
+variable "db_password" {
+  sensitive = true
 }

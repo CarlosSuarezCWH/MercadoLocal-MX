@@ -10,23 +10,8 @@ provider "aws" {
   }
 }
 
-# --- Secrets Generation ---
-resource "random_password" "db_password" {
-  length           = 16
-  special          = true
-  override_special = "!#$%&*()-_=+[]{}<>?"
-}
-
-resource "aws_ssm_parameter" "db_password" {
-  name        = "/${var.project_name}/${var.environment}/database/password"
-  description = "Master password for the RDS database"
-  type        = "SecureString"
-  value       = random_password.db_password.result
-}
-
-# --- Modules ---
 module "vpc" {
-  source                    = "./modules/vpc"
+  source                    = "../../modules/vpc"
   project_name              = var.project_name
   environment               = var.environment
   vpc_cidr                  = var.vpc_cidr
@@ -34,36 +19,17 @@ module "vpc" {
   private_app_subnets_cidr  = var.private_app_subnets_cidr
   private_data_subnets_cidr = var.private_data_subnets_cidr
   availability_zones        = var.availability_zones
-  nat_gateway_count         = var.nat_gateway_count
 }
 
 module "security" {
-  source       = "./modules/security"
+  source       = "../../modules/security"
   project_name = var.project_name
   environment  = var.environment
   vpc_id       = module.vpc.vpc_id
 }
 
-module "s3" {
-  source       = "./modules/s3"
-  project_name = var.project_name
-  environment  = var.environment
-}
-
-module "acm" {
-  source      = "./modules/acm"
-  domain_name = var.domain_name
-  zone_id     = var.route53_zone_id
-}
-
-module "waf" {
-  source       = "./modules/waf"
-  project_name = var.project_name
-  environment  = var.environment
-}
-
 module "efs" {
-  source              = "./modules/efs"
+  source              = "../../modules/efs"
   project_name        = var.project_name
   environment         = var.environment
   private_app_subnets = module.vpc.private_app_subnet_ids
@@ -71,18 +37,18 @@ module "efs" {
 }
 
 module "rds" {
-  source                 = "./modules/rds"
+  source                 = "../../modules/rds"
   project_name           = var.project_name
   environment            = var.environment
   private_data_subnets   = module.vpc.private_data_subnet_ids
   vpc_security_group_ids = [module.security.data_sg_id]
   db_name                = var.db_name
   db_username            = var.db_username
-  db_password            = random_password.db_password.result
+  db_password            = var.db_password
 }
 
 module "elasticache" {
-  source               = "./modules/elasticache"
+  source               = "../../modules/elasticache"
   project_name         = var.project_name
   environment          = var.environment
   private_data_subnets = module.vpc.private_data_subnet_ids
@@ -90,28 +56,16 @@ module "elasticache" {
 }
 
 module "alb" {
-  source            = "./modules/alb"
+  source            = "../../modules/alb"
   project_name      = var.project_name
   environment       = var.environment
   vpc_id            = module.vpc.vpc_id
   public_subnets    = module.vpc.public_subnet_ids
   security_group_id = module.security.alb_sg_id
-  domain_name       = var.domain_name
-}
-
-module "cloudfront" {
-  source                = "./modules/cloudfront"
-  project_name          = var.project_name
-  environment           = var.environment
-  alb_dns_name          = module.alb.dns_name
-  s3_bucket_domain_name = module.s3.bucket_domain_name
-  web_acl_arn           = module.waf.web_acl_arn
-  acm_certificate_arn   = module.acm.certificate_arn
-  domain_name           = var.domain_name
 }
 
 module "asg" {
-  source              = "./modules/asg"
+  source              = "../../modules/asg"
   project_name        = var.project_name
   environment         = var.environment
   vpc_id              = module.vpc.vpc_id
@@ -123,15 +77,7 @@ module "asg" {
   db_host             = module.rds.endpoint
   db_name             = var.db_name
   db_username         = var.db_username
-  db_password         = random_password.db_password.result
+  db_password         = var.db_password
   redis_host          = module.elasticache.primary_endpoint_address
   redis_port          = module.elasticache.port
-}
-
-module "route53" {
-  source                    = "./modules/route53"
-  zone_id                   = var.route53_zone_id
-  domain_name               = var.domain_name
-  cloudfront_domain_name    = module.cloudfront.domain_name
-  cloudfront_hosted_zone_id = module.cloudfront.hosted_zone_id
 }

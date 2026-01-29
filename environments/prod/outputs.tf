@@ -2,18 +2,10 @@ output "load_balancer_dns" {
   value = module.alb.dns_name
 }
 
-output "cloudfront_domain_name" {
-  value = module.cloudfront.domain_name
-}
-
 output "database_endpoint" {
   value = module.rds.endpoint
 }
 
 output "redis_endpoint" {
   value = module.elasticache.primary_endpoint_address
-}
-
-output "s3_bucket_name" {
-  value = module.s3.bucket_name
 }

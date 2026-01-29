@@ -1,21 +1,61 @@
-# 🛒 MercadoLocal-MX: Cloud E-commerce Platform
+# WordPress High Availability on AWS (Modular Terraform)
 
-## 📑 Propuesta Técnica de Infraestructura AWS
-Esta solución responde al RFP de MercadoLocal MX, implementando un CMS (WordPress) altamente disponible, escalable y seguro.
+This project deploys a scalable, highly available WordPress infrastructure on AWS using Terraform modules.
 
-### 🏗️ Arquitectura de Red y Cómputo
-- **Topología Multi-AZ:** Despliegue en 2 Zonas de Disponibilidad para garantizar disponibilidad del 99.9%.
-- **Segmentación de Red:** - Subnets Públicas para el Application Load Balancer (ALB).
-  - Subnets Privadas para la capa de Aplicación (EC2) y Datos (RDS).
-- **Escalamiento:** Auto Scaling Group (ASG) con políticas de capacidad mínima y máxima (1-3 instancias).
+## Architecture
 
-### 🔒 Seguridad y Control
-- **RDS No Público:** La base de datos reside en la capa privada, aislada de internet.
-- **Acceso Administrativo:** Gestión mediante AWS Systems Manager (SSM) Session Manager, eliminando la necesidad de SSH (Puerto 22) abierto.
-- **Principio de Privilegio Mínimo:** Uso de IAM Instance Profiles para acceso a S3 sin llaves estáticas.
+- **Compute**: Autoscaling Group with EC2 (Amazon Linux 2023), Nginx, PHP 8.2 FPM.
+- **Database**: Amazon Aurora MySQL Serverless v2.
+- **Storage**: EFS (Elastic Throughput) for `/wp-content/uploads`.
+- **Caching**: Amazon ElastiCache (Redis) for Object Cache.
+- **Networking**: VPC across 3 AZs, ALB, NAT Gateways.
+- **Security**: Strictly chained Security Groups.
 
-### ⚙️ Desacoplamiento (Funcionalidad Lambda)
-Se implementó un microservicio asíncrono mediante **AWS Lambda**. Cuando se carga una imagen de producto al Bucket S3, la Lambda se dispara automáticamente para procesamiento y optimización de medios, cumpliendo con el requisito de backend desacoplado.
+## Prerequisites
 
-### 🚀 Despliegue Automatizado
-Infraestructura desplegada mediante un pipeline de CI/CD en GitHub Actions.
+- Terraform >= 1.3.0
+- AWS Credentials configured
+- S3 Bucket for Terraform State (update `environments/prod/backend.tf`)
+- DynamoDB Table for Locking (update `environments/prod/backend.tf`)
+
+## Directory Structure
+
+```plaintext
+├── modules/          # Reusable modules
+│   ├── vpc/
+│   ├── alb/
+│   ├── asg/
+│   ├── rds/
+│   ├── efs/
+│   ├── elasticache/
+│   └── security/
+├── environments/
+│   └── prod/         # Production implementation
+│       ├── main.tf
+│       ├── variables.tf
+│       └── ...
+```
+
+## How to Deploy
+
+1. **Initialize**:
+   ```bash
+   cd environments/prod
+   terraform init
+   ```
+
+2. **Plan**:
+   ```bash
+   terraform plan -out=tfplan
+   ```
+
+3. **Apply**:
+   ```bash
+   terraform apply tfplan
+   ```
+
+## Configuration
+
+Update `environments/prod/variables.tf` or create a `terraform.tfvars` file with your specific values (DB passwords, etc.).
+
+**Important**: The `backend.tf` file expects an existing S3 bucket. If you are deploying for the first time without a backend, comment out the `backend` block in `backend.tf`, deploy, and then migrate state.
